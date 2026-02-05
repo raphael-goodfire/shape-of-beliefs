@@ -15,12 +15,12 @@ import torch.nn.functional as F
 
 output_dir_extension = "probes/epoch{epochs:03d}_biasFalse"
 
-number_start_index = 500
+number_start_index = 500 # remove the first com2num tokens until the model equilibrates
 
 
 BASE_DIR = Path(__file__).resolve().parent
 ACTIVS_DIR = BASE_DIR / "data" / "activations"
-# Train/fit on these datasets (labels 0, 1, … in order)
+# Train/fit on these datasets (labels 0, 1, ..., n)
 TRAIN_DATASETS = [
     "gaussian_m300_s100_l1000_n10",
     "gaussian_m350_s100_l1000_n10",

@@ -113,6 +113,17 @@ def ensure_empty_or_overwrite(path: Path):
         raise FileExistsError(f"Output path exists (set ALLOW_OVERWRITE=True to overwrite): {path}")
 
 
+def batch_already_computed(batch_idx: int, sites: list[str], activs_output_dir: Path, logits_output_dir: Path) -> bool:
+    logits_path = logits_output_dir / f"logits_batch{batch_idx:04d}.pt"
+    if not logits_path.exists():
+        return False
+    for site in sites:
+        acts_path = activs_output_dir / f"{site.replace('.', '_')}_batch{batch_idx:04d}.pt"
+        if not acts_path.exists():
+            return False
+    return True
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate activations and logits from sequences.")
     parser.add_argument(
@@ -152,10 +163,6 @@ def main():
     activs_output_dir.mkdir(parents=True, exist_ok=True)
     logits_output_dir.mkdir(parents=True, exist_ok=True)
 
-    for site in sites:
-        ensure_empty_or_overwrite(activs_output_dir / f"{site.replace('.', '_')}_batch0000.pt")
-    ensure_empty_or_overwrite(logits_output_dir / "logits_batch0000.pt")
-
     if not TOKEN_SUBSET_PATH.exists():
         raise FileNotFoundError(f"Token subset file not found: {TOKEN_SUBSET_PATH}")
     token_map = json.loads(TOKEN_SUBSET_PATH.read_text(encoding="utf-8"))
@@ -174,6 +181,10 @@ def main():
 
     with torch.no_grad():
         for batch_idx, batch in enumerate(batch_iter):
+            if batch_already_computed(batch_idx, sites, activs_output_dir, logits_output_dir):
+                print(f"Skipping batch {batch_idx} (already computed).")
+                continue
+
             seq_ids = [seq.sequence_id for seq in batch]
             prompts = [seq.sequence_content for seq in batch]
 
@@ -240,6 +251,10 @@ def main():
                     },
                     acts_path,
                 )
+
+            del captures, logits, subset_logits, input_ids, attention_mask, input_ids_cpu
+            if device == "cuda":
+                torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":

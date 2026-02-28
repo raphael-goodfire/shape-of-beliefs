@@ -1,3 +1,6 @@
+[tool.setuptools]
+packages = []
+
 [project]
 name = "shape-of-beliefs"
 version = "0.1.0"
